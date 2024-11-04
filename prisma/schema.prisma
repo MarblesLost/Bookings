@@ -1,0 +1,156 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  // NOTE: When using mysql or sqlserver, uncomment the @db.Text annotations in model Account below
+  // Further reading:
+  // https://next-auth.js.org/adapters/prisma#create-the-prisma-schema
+  // https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#string
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  roleId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  role            Role             @relation(fields: [roleId], references: [id])
+  bookings        Booking[]
+  servicesAsCoach CoachOnService[]
+  servicesAsAdmin AdminOnService[]
+  Availability    Availability[]
+}
+
+model Role {
+  id   String @id @default(uuid())
+  name String @unique
+
+  // Relationships
+  users User[]
+}
+
+model Service {
+  id                     String    @id @default(uuid())
+  name                   String
+  languageId             String?
+  visibilityId           String?
+  allowBooking           Boolean?
+  allowRescheduling      Boolean?
+  allowCancellation      Boolean?
+  isHidden               Boolean?
+  bookingWindowStart     Int? // in days from the current date
+  bookingWindowEnd       Int? // in days from the current date
+  meetingMethodId        String?
+  meetingDurationMinutes Int? // in minutes
+  createdAt              DateTime? @default(now())
+  updatedAt              DateTime? @updatedAt
+
+  // Relationships
+  language       Language?        @relation(fields: [languageId], references: [id])
+  visibility     Visibility?      @relation(fields: [visibilityId], references: [id])
+  meetingMethod  MeetingMethod?   @relation(fields: [meetingMethodId], references: [id])
+  admins         AdminOnService[]
+  coaches        CoachOnService[]
+  availabilities Availability[]
+  bookings       Booking[]
+}
+
+model Language {
+  id   String @id @default(uuid())
+  name String @unique
+
+  // Relationships
+  services Service[]
+}
+
+model Visibility {
+  id   String @id @default(uuid())
+  name String @unique
+
+  // Relationships
+  services Service[]
+}
+
+model MeetingMethod {
+  id   String @id @default(uuid())
+  name String @unique
+
+  // Relationships
+  services Service[]
+}
+
+model BookingStatus {
+  id   String @id @default(uuid())
+  name String @unique
+
+  // Relationships
+  bookings Booking[]
+}
+
+model Availability {
+  id        String   @id @default(uuid())
+  startTime DateTime
+  endTime   DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  coachId   String
+  coach     User      @relation(fields: [coachId], references: [id])
+  service   Service   @relation(fields: [serviceId], references: [id])
+  serviceId String
+  bookings  Booking[]
+}
+
+model Booking {
+  id          String   @id @default(uuid())
+  statusId    String
+  bookedAt    DateTime @default(now())
+  meetingTime DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  status         BookingStatus @relation(fields: [statusId], references: [id])
+  userId         String
+  user           User          @relation(fields: [userId], references: [id])
+  serviceId      String
+  service        Service       @relation(fields: [serviceId], references: [id])
+  availability   Availability  @relation(fields: [availabilityId], references: [id])
+  availabilityId String
+}
+
+model CoachOnService {
+  id         String   @id @default(uuid())
+  coachId    String
+  serviceId  String
+  assignedAt DateTime @default(now())
+
+  // Relationships
+  coach   User    @relation(fields: [coachId], references: [id])
+  service Service @relation(fields: [serviceId], references: [id])
+
+  @@unique([coachId, serviceId])
+}
+
+model AdminOnService {
+  id         String   @id @default(uuid())
+  adminId    String
+  serviceId  String
+  assignedAt DateTime @default(now())
+
+  // Relationships
+  admin   User    @relation(fields: [adminId], references: [id])
+  service Service @relation(fields: [serviceId], references: [id])
+
+  @@unique([adminId, serviceId])
+}
